@@ -3,6 +3,7 @@ const router = new express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Registers = require("../models/registers");
+const auth = require("../middleware/auth");
 
 /**
  * GET /
@@ -11,6 +12,46 @@ const Registers = require("../models/registers");
 router.get("/", (req, res) => {
     res.render("index");
 });
+
+router.get("/secret",auth, async(req, res) => {
+    // console.log(`This is the cookie : ${req.cookies.jwt}`);
+
+    res.render("secret");
+})
+
+router.get("/logout", auth, async(req, res) => {
+    try {
+        console.log(req.rootUser);
+
+        const logoutOption = req.query.logoutOption;
+        if(logoutOption === "allDevice"){
+            // logout from all device
+            req.rootUser.tokens = [];
+        } else if(logoutOption === "currentDevice"){
+            // logout from current device
+            req.rootUser.tokens = req.rootUser.tokens.filter((curElem) => {
+                return curElem.token !== req.token;
+            });
+        } else {
+            return res.status(400).send({"error": "Please provide valid logout option"});
+        }
+
+        // logout from current device
+        // req.rootUser.tokens = req.rootUser.tokens.filter((curElem) => {
+        //     return curElem.token !== req.token;
+        // })
+
+        // logout from all device
+        // req.rootUser.tokens = [];
+        
+        res.clearCookie("jwt");
+
+        await req.rootUser.save();
+        res.render("login");
+    } catch (error) {
+        res.status(500).send(error);
+    }
+})
 
 /**
  * GET /register
@@ -49,6 +90,13 @@ router.post("/register", async (req, res) => {
 
             const token = await RegisterPerson.generateAuthToken();
             
+            res.cookie("jwt", token, {
+                expires : new Date(Date.now() + 600000),
+                httpOnly : true
+                // secure: true
+            });
+            console.log("this is cookie : " + cookie);
+
             const registered = await RegisterPerson.save();
             res.status(201).render("login");
         }
@@ -82,7 +130,14 @@ router.post("/login", async (req, res) => {
 
         // Generate token only if the password is valid
         const token = await userEmail.generateAuthToken();
-        console.log(token);
+        // console.log(token);
+
+        res.cookie("jwt", token, {
+            expires : new Date(Date.now() + 30000),
+            httpOnly : true
+            // secure: true
+        });
+
 
         // Render the home page if login is successful
         res.status(201).render("index");

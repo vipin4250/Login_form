@@ -1,8 +1,9 @@
-require("dotenv").config();
+require("dotenv").config(); 
 const express = require("express");
 const path = require("path");
 const hbs = require("hbs");
 const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 require("./db/conn");
 
 //setting up the server
@@ -23,6 +24,7 @@ app.set("views", template_path);
 hbs.registerPartials(partials_path);
 
 // setting up the view engine, routers , and use express.json() to identify the pure json data form the database
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended: false}));
 app.use(loginRouters);
